@@ -37,6 +37,7 @@ namespace FlowerGit
 
     internal static class SectionTitle
     {
+        public static GUIContent commitLog = new GUIContent("コミットログ");
         public static GUIContent commitList = new GUIContent("確定コミット");
         public static GUIContent stagingList = new GUIContent("コミット候補");
         public static GUIContent workingList = new GUIContent("作業ファイル");
@@ -53,6 +54,7 @@ namespace FlowerGit
         public static GUIStyle richStyle = new GUIStyle(EditorStyles.label) { richText = true };
         public static GUIStyle multiLine = new GUIStyle(EditorStyles.label) { wordWrap = true };
         public static GUIStyle note = new GUIStyle() { alignment = TextAnchor.MiddleLeft, fontSize = 11 };
+        public static GUIStyle foldOut = new GUIStyle("foldout") { margin = new RectOffset(2, 0, 0, 0) };
         public static Color lineColor = new Color(0.15f, 0.15f, 0.15f, 1.0f);
         static StyleSet()
         {

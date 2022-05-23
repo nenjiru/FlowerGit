@@ -9,31 +9,31 @@ namespace FlowerGit
     public class StatusWindowDrawer
     {
         #region VARIABLE
+        private static bool _recentLogExpanded;
         private static string _commitMessage;
         #endregion
 
         #region PUBLIC_METHODS
+        /// <summary>
+        /// Draw recent commit log.
+        /// </summary>
+        public static void drawRecentLog(CommitLog[] logs)
+        {
+            _recentLogExpanded = EditorGUILayout.Foldout(_recentLogExpanded, SectionTitle.commitLog, true, StyleSet.foldOut);
+            if (!_recentLogExpanded)
+            {
+                return;
+            }
+            _drawCommitLog(logs);
+        }
+
         /// <summary>
         /// Draw un pushed commit list.
         /// </summary>
         public static void drawCommitList(CommitLog[] logs)
         {
             EditorGUILayout.LabelField(SectionTitle.commitList);
-
-            if (logs.Length == 0)
-            {
-                _blankBox();
-                return;
-            }
-
-            using (new EditorGUILayout.VerticalScope(GUI.skin.box))
-            {
-                foreach (var item in logs)
-                {
-                    var log = $"<color=#999933>{item.hash}</color> {item.message}";
-                    EditorGUILayout.LabelField(log, StyleSet.richStyle);
-                }
-            }
+            _drawCommitLog(logs);
         }
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace FlowerGit
             {
                 EditorGUILayout.LabelField("");
                 EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(_commitMessage));
-                if (GUILayout.Button(TextLabel.commit))
+                if (GUILayout.Button(TextLabel.commit, GUILayout.ExpandWidth(false)))
                 {
                     GitUtils.Commit(_commitMessage);
                     _commitMessage = "";
@@ -154,6 +154,24 @@ namespace FlowerGit
             EditorGUILayout.BeginVertical(GUI.skin.box);
             EditorGUILayout.LabelField("");
             EditorGUILayout.EndVertical();
+        }
+
+        private static void _drawCommitLog(CommitLog[] logs)
+        {
+            if (logs.Length == 0)
+            {
+                _blankBox();
+                return;
+            }
+
+            using (new EditorGUILayout.VerticalScope(GUI.skin.box))
+            {
+                foreach (var item in logs)
+                {
+                    var log = $"<color=#999933>{item.hash}</color> {item.message}";
+                    EditorGUILayout.LabelField(log, StyleSet.richStyle);
+                }
+            }
         }
 
         private static void _fileHeader(Status item)

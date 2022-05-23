@@ -73,6 +73,8 @@ namespace FlowerGit
         };
         private static FileStatus[] _fileStatusCache = new FileStatus[0];
         private static string _rawStatusCache = "";
+        private static CommitLog[] _recentLogCache = new CommitLog[0];
+        private static string _rawRecentCache = "";
         private static CommitLog[] _commitLogCache = new CommitLog[0];
         private static string _rawCommitCache = "";
         #endregion
@@ -146,6 +148,22 @@ namespace FlowerGit
             return result;
         }
 
+        public static CommitLog[] GetRecentLog(string remote, int max = 10)
+        {
+            var log = Execute($"log --oneline --max-count {max} {remote}");
+            if (log == _rawRecentCache)
+            {
+                return _recentLogCache;
+            }
+
+            var logs = _splitLogs(log);
+            var result = _commitLog(logs);
+
+            _rawRecentCache = log;
+            _recentLogCache = result;
+            return result;
+        }
+
         public static CommitLog[] GetCommitLog(string remote)
         {
             var log = Execute($"log --oneline {remote}..HEAD");
@@ -155,11 +173,7 @@ namespace FlowerGit
             }
 
             var logs = _splitLogs(log);
-            var result = new CommitLog[logs.Length];
-            for (int i = 0; i < logs.Length; i++)
-            {
-                result[i] = new CommitLog(logs[i]);
-            }
+            var result = _commitLog(logs);
 
             _rawCommitCache = log;
             _commitLogCache = result;
@@ -235,6 +249,16 @@ namespace FlowerGit
         #endregion
 
         #region PRIVATE_METHODS
+        static CommitLog[] _commitLog(string[] logs)
+        {
+            var result = new CommitLog[logs.Length];
+            for (int i = 0; i < logs.Length; i++)
+            {
+                result[i] = new CommitLog(logs[i]);
+            }
+            return result;
+        }
+
         static string[] _splitLogs(string log)
         {
             return log.Replace("\r\n", "\n").Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);

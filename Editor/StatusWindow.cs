@@ -78,6 +78,9 @@ namespace FlowerGit
             _drawProgress();
             _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
 
+            EditorGUILayout.Space(3);
+            StatusWindowDrawer.drawRecentLog(StatusManager.recentLogs);
+
             EditorGUILayout.Space();
             StatusWindowDrawer.drawCommitList(StatusManager.commitLogs);
 

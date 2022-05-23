@@ -18,6 +18,7 @@ namespace FlowerGit
         public static string remoteBranch = "origin/main";
         public static Status[] staged = new Status[0];
         public static Status[] working = new Status[0];
+        public static CommitLog[] recentLogs = new CommitLog[0];
         public static CommitLog[] commitLogs = new CommitLog[0];
         private static FileStatus[] _statusCache = new FileStatus[0];
         private static List<Status> _stagedList = new List<Status>();
@@ -42,6 +43,7 @@ namespace FlowerGit
         /// </summary>
         public static void Update()
         {
+            recentLogs = GitUtils.GetRecentLog(remoteBranch, 10);
             commitLogs = GitUtils.GetCommitLog(remoteBranch);
 
             var status = GitUtils.GetStatus();
