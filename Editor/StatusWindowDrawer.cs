@@ -55,7 +55,6 @@ namespace FlowerGit
                 using (new EditorGUILayout.HorizontalScope(GUI.skin.box))
                 {
                     _fileHeader(item);
-
                     if (GUILayout.Button(TextLabel.cancel))
                     {
                         GitUtils.Restore(item.path, "--staged");
@@ -179,7 +178,10 @@ namespace FlowerGit
             GUILayout.Box(item.icon, GUILayout.Height(40), GUILayout.Width(40));
             using (new EditorGUILayout.VerticalScope())
             {
-                EditorGUILayout.LabelField(item.label + " " + item.name, StyleSet.richStyle);
+                if (GUILayout.Button(item.label + " " + item.name, StyleSet.richStyle))
+                {
+                    EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<Object>(item.path));
+                }
                 EditorGUILayout.LabelField(item.path, EditorStyles.miniLabel);
             }
         }
