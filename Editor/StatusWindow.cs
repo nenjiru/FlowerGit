@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 
@@ -101,7 +102,7 @@ namespace FlowerGit
         public static void Init()
         {
             AssetsWatcher.onChanged += _updateStatus;
-            GitUtils.onBothComplete += _onBothComplate;
+            GitUtils.onBothComplete += _onBothComplete;
             _remoteURL = GitUtils.Execute("config --local --get remote.origin.url");
             _currentBranch = GitUtils.Execute("symbolic-ref --short HEAD");
             _lastUpdate = GitUtils.LastUpdate();
@@ -114,7 +115,7 @@ namespace FlowerGit
         public static void Deinit()
         {
             AssetsWatcher.onChanged -= _updateStatus;
-            GitUtils.onBothComplete -= _onBothComplate;
+            GitUtils.onBothComplete -= _onBothComplete;
             StatusManager.Clear();
             _remoteURL = null;
             _currentBranch = null;
@@ -149,14 +150,14 @@ namespace FlowerGit
                 if (GUILayout.Button("Add", GUILayout.ExpandWidth(false)))
                 {
                     _progress = "Initialize";
-                    GitUtils.onInitComplete += _onInitComplate;
+                    GitUtils.onInitComplete += _onInitComplete;
                     GitUtils.InitAsync(_remoteURL.Trim());
                 }
                 EditorGUI.EndDisabledGroup();
             }
         }
 
-        static void _onInitComplate(string result, bool error)
+        static void _onInitComplete(string result, bool error)
         {
             _progress = null;
             var message = result;
@@ -166,14 +167,17 @@ namespace FlowerGit
                 _isRepository = true;
             }
             EditorUtility.DisplayDialog("Git message", message, "OK");
-            GitUtils.onInitComplete -= _onInitComplate;
+            GitUtils.onInitComplete -= _onInitComplete;
             Init();
         }
 
-        static void _onBothComplate(string pull, string push, bool error)
+        static void _onBothComplete(string pull, string push, bool error)
         {
             _progress = null;
-            var message = $"Pull result: {pull}\nPush result: {push}";
+            var separator = new[] { "\r\n", "\n", "\r" };
+            pull = pull.Split(separator, System.StringSplitOptions.None).FirstOrDefault();
+            push = push.Split(separator, System.StringSplitOptions.None).FirstOrDefault();
+            var message = $"Pull: {pull}\nPush: {push}";
             if (!error)
             {
                 message = $"{TextLabel.syncCompleteMessage}\n{message}";
