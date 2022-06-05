@@ -57,7 +57,8 @@ namespace FlowerGit
         public static event AsyncEvent onPushComplete;
         public delegate void BothAsyncEvent(string pull, string push, bool error);
         public static event BothAsyncEvent onBothComplete;
-        private static readonly string fetchHeadPath = Path.Combine(Directory.GetCurrentDirectory(), ".git", "FETCH_HEAD");
+        private static readonly string gitPath = Path.Combine(Directory.GetCurrentDirectory(), ".git");
+        private static readonly string fetchHeadPath = Path.Combine(gitPath, "FETCH_HEAD");
         #endregion
 
         #region VARIABLE
@@ -91,22 +92,20 @@ namespace FlowerGit
         #endregion
 
         #region PUBLIC_METHODS
-        public static string Execute(string arguments)
+        public static (string result, int code) Execute(string arguments)
         {
             _startInfo.Arguments = arguments;
             using (var process = Process.Start(_startInfo))
             {
                 process.WaitForExit();
+                var output = process.StandardOutput.ReadToEnd().TrimEnd();
                 var error = process.StandardError.ReadToEnd().TrimEnd();
-                if (string.IsNullOrEmpty(error) || error.IndexOf("warning:") == 0)
-                {
-                    return process.StandardOutput.ReadToEnd().TrimEnd();
-                }
-                else
+                var result = (!string.IsNullOrEmpty(output)) ? output.TrimEnd() : error.TrimEnd();
+                if (process.ExitCode != 0 && !string.IsNullOrEmpty(result))
                 {
                     UnityEngine.Debug.LogError(error);
-                    return error;
-                };
+                }
+                return (result, process.ExitCode);
             }
         }
 
@@ -131,19 +130,19 @@ namespace FlowerGit
         public static FileStatus[] GetStatus()
         {
             var raw = Execute("status --short --untracked-files=all");
-            if (raw == _rawStatusCache)
+            if (raw.result == _rawStatusCache)
             {
                 return _fileStatusCache;
             }
 
-            var status = _splitLogs(raw);
+            var status = _splitLogs(raw.result);
             var result = new FileStatus[status.Length];
             for (int i = 0; i < status.Length; i++)
             {
                 result[i] = new FileStatus(status[i]);
             }
 
-            _rawStatusCache = raw;
+            _rawStatusCache = raw.result;
             _fileStatusCache = result;
             return result;
         }
@@ -151,15 +150,15 @@ namespace FlowerGit
         public static CommitLog[] GetRecentLog(string remote, int max = 10)
         {
             var log = Execute($"log --oneline --max-count {max} {remote}");
-            if (log == _rawRecentCache)
+            if (log.result == _rawRecentCache)
             {
                 return _recentLogCache;
             }
 
-            var logs = _splitLogs(log);
+            var logs = _splitLogs(log.result);
             var result = _commitLog(logs);
 
-            _rawRecentCache = log;
+            _rawRecentCache = log.result;
             _recentLogCache = result;
             return result;
         }
@@ -167,15 +166,15 @@ namespace FlowerGit
         public static CommitLog[] GetCommitLog(string remote)
         {
             var log = Execute($"log --oneline {remote}..HEAD");
-            if (log == _rawCommitCache)
+            if (log.result == _rawCommitCache)
             {
                 return _commitLogCache;
             }
 
-            var logs = _splitLogs(log);
+            var logs = _splitLogs(log.result);
             var result = _commitLog(logs);
 
-            _rawCommitCache = log;
+            _rawCommitCache = log.result;
             _commitLogCache = result;
             return result;
         }
@@ -187,31 +186,31 @@ namespace FlowerGit
 
         public static string Add(string path)
         {
-            return Execute($"add \"{path}\"");
+            return Execute($"add \"{path}\"").result;
         }
 
         public static string Restore(string path, string option = "")
         {
-            return Execute($"restore {option} \"{path}\"");
+            return Execute($"restore {option} \"{path}\"").result;
         }
 
         public static string Commit(string message)
         {
-            return Execute($"commit -m \"{message}\"");
+            return Execute($"commit -m \"{message}\"").result;
         }
 
         public static string Resolve(string target, string path)
         {
             Execute($"checkout {target} {path}");
-            return Execute("commit -am \"Fixed Conflict\"");
+            return Execute("commit -am \"Fixed Conflict\"").result;
         }
 
         public static async Task<string> RemoteHeadBranch()
         {
-            var origin = Execute("config --local --get branch.main.remote");
+            var origin = Execute("config --local --get branch.main.remote").result;
             var remote = await ExecuteAsync("remote show origin");
-            Match matche = Regex.Match(remote.result, @"HEAD branch: (.*)");
-            return $"{origin}/{matche.Groups[1].Value}";
+            Match match = Regex.Match(remote.result, @"HEAD branch: (.*)");
+            return $"{origin}/{match.Groups[1].Value}";
         }
 
         public static async void InitAsync(string url)
@@ -220,9 +219,9 @@ namespace FlowerGit
             GitUtils.Execute("branch -m main");
             GitUtils.Execute($"remote add origin {url}");
             var fetch = await GitUtils.ExecuteAsync("fetch");
-            GitUtils.Execute("checkout main");
+            var checkout = GitUtils.Execute("checkout main");
             await Task.Delay(1000);
-            onInitComplete?.Invoke(fetch.result, fetch.code != 0);
+            onInitComplete?.Invoke(fetch.result, (fetch.code + checkout.code) != 0);
         }
 
         public static async void BothAsync()
@@ -246,6 +245,14 @@ namespace FlowerGit
             var push = await ExecuteAsync("push");
             onPushComplete?.Invoke(push.result, push.code != 0);
         }
+
+        public static void DeleteRepository()
+        {
+            if (Directory.Exists(gitPath))
+            {
+                _deleteDirectory(gitPath);
+            }
+        }
         #endregion
 
         #region PRIVATE_METHODS
@@ -262,6 +269,24 @@ namespace FlowerGit
         static string[] _splitLogs(string log)
         {
             return log.Replace("\r\n", "\n").Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        static void _deleteDirectory(string targetPath)
+        {
+            string[] files = Directory.GetFiles(targetPath);
+            foreach (string path in files)
+            {
+                File.SetAttributes(path, FileAttributes.Normal);
+                File.Delete(path);
+            }
+
+            string[] directories = Directory.GetDirectories(targetPath);
+            foreach (string path in directories)
+            {
+                _deleteDirectory(path);
+            }
+
+            Directory.Delete(targetPath, false);
         }
         #endregion
     }

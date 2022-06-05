@@ -28,7 +28,7 @@ namespace FlowerGit
 
         void OnEnable()
         {
-            var currentBranch = GitUtils.Execute("symbolic-ref --short HEAD");
+            var currentBranch = GitUtils.Execute("symbolic-ref --short HEAD").result;
             _isRepository = !currentBranch.Contains("fatal: not a git repository");
             if (_isRepository)
             {
@@ -103,8 +103,8 @@ namespace FlowerGit
         {
             AssetsWatcher.onChanged += _updateStatus;
             GitUtils.onBothComplete += _onBothComplete;
-            _remoteURL = GitUtils.Execute("config --local --get remote.origin.url");
-            _currentBranch = GitUtils.Execute("symbolic-ref --short HEAD");
+            _remoteURL = GitUtils.Execute("config --local --get remote.origin.url").result;
+            _currentBranch = GitUtils.Execute("symbolic-ref --short HEAD").result;
             _lastUpdate = GitUtils.LastUpdate();
             _updateStatus();
         }
@@ -160,15 +160,18 @@ namespace FlowerGit
         static void _onInitComplete(string result, bool error)
         {
             _progress = null;
-            var message = result;
-            if (!error)
-            {
-                message = $"{TextLabel.syncCompleteMessage}\n{message}";
-                _isRepository = true;
-            }
+            var message = (!error) ? $"{TextLabel.syncCompleteMessage}\n{result}" : TextLabel.initErrorMessage;
             EditorUtility.DisplayDialog("Git message", message, "OK");
             GitUtils.onInitComplete -= _onInitComplete;
-            Init();
+            if (!error)
+            {
+                _isRepository = true;
+                Init();
+            }
+            else
+            {
+                GitUtils.DeleteRepository();
+            }
         }
 
         static void _onBothComplete(string pull, string push, bool error)
