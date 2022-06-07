@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -101,6 +102,21 @@ namespace FlowerGit
             {
                 _blankBox();
                 return;
+            }
+
+            var hasConflict = statuses.Any(item => (item.condition == Status.Condition.CONFLICT));
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.LabelField(statuses.Length.ToString() + " Files");
+                EditorGUI.BeginDisabledGroup(hasConflict);
+                if (GUILayout.Button(TextLabel.stagingAll))
+                {
+                    GitUtils.Add(".");
+                    _updateStatus();
+                }
+                EditorGUI.EndDisabledGroup();
+                EditorGUI.indentLevel--;
             }
 
             foreach (Status item in statuses)

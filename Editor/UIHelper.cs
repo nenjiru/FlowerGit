@@ -10,6 +10,7 @@ namespace FlowerGit
         public readonly static string file = "ファイル";
         public readonly static string staging = "確定";
         public readonly static string reset = "リセット";
+        public readonly static string stagingAll = "すべて確定";
         public readonly static string syncCompleteMessage = "同期が完了しました";
         public readonly static string initErrorMessage = "初期化に失敗しました。git cloneを使用してください";
         public readonly static string workingDetection = "変更を検出";
