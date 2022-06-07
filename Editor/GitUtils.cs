@@ -95,17 +95,28 @@ namespace FlowerGit
         public static (string result, int code) Execute(string arguments)
         {
             _startInfo.Arguments = arguments;
-            using (var process = Process.Start(_startInfo))
+            using (var process = new Process())
             {
+                var stdout = new StringBuilder();
+                var stderr = new StringBuilder();
+                var timeout = (int)TimeSpan.FromMinutes(2).TotalMilliseconds;
+
+                process.StartInfo = _startInfo;
+                process.OutputDataReceived += (s, e) => { if (e.Data != null) { stdout.AppendLine(e.Data); } };
+                process.ErrorDataReceived += (s, e) => { if (e.Data != null) { stderr.AppendLine(e.Data); } };
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
                 process.WaitForExit();
-                var output = process.StandardOutput.ReadToEnd().TrimEnd();
-                var error = process.StandardError.ReadToEnd().TrimEnd();
-                var result = (!string.IsNullOrEmpty(output)) ? output.TrimEnd() : error.TrimEnd();
-                if (process.ExitCode != 0 && !string.IsNullOrEmpty(result))
+                process.CancelOutputRead();
+                process.CancelErrorRead();
+
+                var error = stderr.ToString();
+                if (process.ExitCode != 0 && !string.IsNullOrEmpty(error))
                 {
                     UnityEngine.Debug.LogError(error);
                 }
-                return (result, process.ExitCode);
+                return (stdout.ToString().TrimEnd(), process.ExitCode);
             }
         }
 
@@ -116,65 +127,65 @@ namespace FlowerGit
             {
                 process.StartInfo = _startInfo;
                 await process.RunAsync();
-                var output = await process.StandardOutput.ReadToEndAsync();
-                var error = await process.StandardError.ReadToEndAsync();
-                var result = (!string.IsNullOrEmpty(output)) ? output.TrimEnd() : error.TrimEnd();
-                if (process.ExitCode != 0 && !string.IsNullOrEmpty(result))
+                var stdout = await process.StandardOutput.ReadToEndAsync();
+                var stderr = await process.StandardError.ReadToEndAsync();
+                var error = stderr.ToString();
+                if (process.ExitCode != 0 && !string.IsNullOrEmpty(error))
                 {
                     UnityEngine.Debug.LogError(error);
                 }
-                return (result, process.ExitCode);
+                return (stdout.ToString().TrimEnd(), process.ExitCode);
             };
         }
 
         public static FileStatus[] GetStatus()
         {
-            var raw = Execute("status --short --untracked-files=all");
-            if (raw.result == _rawStatusCache)
+            var raw = Execute("status --short --untracked-files=all").result;
+            if (raw == _rawStatusCache)
             {
                 return _fileStatusCache;
             }
 
-            var status = _splitLogs(raw.result);
+            var status = _splitLogs(raw);
             var result = new FileStatus[status.Length];
             for (int i = 0; i < status.Length; i++)
             {
                 result[i] = new FileStatus(status[i]);
             }
 
-            _rawStatusCache = raw.result;
+            _rawStatusCache = raw;
             _fileStatusCache = result;
             return result;
         }
 
         public static CommitLog[] GetRecentLog(string remote, int max = 10)
         {
-            var log = Execute($"log --oneline --max-count {max} {remote}");
-            if (log.result == _rawRecentCache)
+            var log = Execute($"log --oneline --max-count {max} {remote}").result;
+            if (log == _rawRecentCache)
             {
                 return _recentLogCache;
             }
 
-            var logs = _splitLogs(log.result);
+            var logs = _splitLogs(log);
             var result = _commitLog(logs);
 
-            _rawRecentCache = log.result;
+            _rawRecentCache = log;
             _recentLogCache = result;
             return result;
         }
 
         public static CommitLog[] GetCommitLog(string remote)
         {
-            var log = Execute($"log --oneline {remote}..HEAD");
-            if (log.result == _rawCommitCache)
+            var log = Execute($"log --oneline {remote}..HEAD").result;
+            if (log == _rawCommitCache)
             {
                 return _commitLogCache;
             }
 
-            var logs = _splitLogs(log.result);
+            var logs = _splitLogs(log);
             var result = _commitLog(logs);
 
-            _rawCommitCache = log.result;
+            _rawCommitCache = log;
             _commitLogCache = result;
             return result;
         }
@@ -215,11 +226,11 @@ namespace FlowerGit
 
         public static async void InitAsync(string url)
         {
-            GitUtils.Execute("init");
-            GitUtils.Execute("branch -m main");
-            GitUtils.Execute($"remote add origin {url}");
-            var fetch = await GitUtils.ExecuteAsync("fetch");
-            var checkout = GitUtils.Execute("checkout main");
+            Execute("init");
+            Execute("branch -m main");
+            Execute($"remote add origin {url}");
+            var fetch = await ExecuteAsync("fetch");
+            var checkout = Execute("checkout main");
             await Task.Delay(1000);
             onInitComplete?.Invoke(fetch.result, (fetch.code + checkout.code) != 0);
         }

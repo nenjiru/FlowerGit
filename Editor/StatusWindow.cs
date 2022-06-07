@@ -28,8 +28,7 @@ namespace FlowerGit
 
         void OnEnable()
         {
-            var currentBranch = GitUtils.Execute("symbolic-ref --short HEAD").result;
-            _isRepository = !currentBranch.Contains("fatal: not a git repository");
+            _isRepository = GitUtils.Execute("symbolic-ref --short HEAD").code == 0;
             if (_isRepository)
             {
                 Init();
